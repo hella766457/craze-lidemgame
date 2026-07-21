@@ -1,6 +1,7 @@
 // 곡 및 채보 데이터베이스
 const SONG_DATABASE = [
-    {id: "anzs_raid",
+    {
+        id: "anzs_raid",
         title: "안즈스 레이드 BGM",
         bpm: 120, // 4비트 박자 간격 기반 (1박 = 0.5초 / 2박 = 1.0초)
         keys: 4,
@@ -63,7 +64,8 @@ const SONG_DATABASE = [
             { lane: 1, time: 23.0, type: "gold" },
             { lane: 2, time: 23.0, type: "gold" },
             { lane: 3, time: 23.0, type: "gold" }
-    },
+        ] // <- notes 배열을 닫는 대괄호 추가
+    }, // <- 첫 번째 곡 객체를 닫는 중괄호 추가
     {
         id: "test_song_1",
         title: "기본 연습곡",
