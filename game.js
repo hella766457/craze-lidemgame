@@ -18,7 +18,7 @@ let isGaming = false;
 let startTime = 0;
 let currentSpeed = 450;
 
-// 점수/판정 관련 데이터
+// 점수/판정 변수
 let score = 0;
 let combo = 0;
 let cntNice = 0;
@@ -30,7 +30,7 @@ let judgeTimer = 0;
 
 let currentNotes = [];
 
-// 1. 곡 선택 리스트 동적 생성
+// 1. 곡 선택 목록 렌더링
 function renderSongList() {
     const container = document.getElementById("songListContainer");
     container.innerHTML = "";
@@ -53,7 +53,7 @@ function selectSong(index) {
     renderSongList();
 }
 
-// 2. 선택된 곡으로 게임 시작
+// 2. 게임 시작
 function playSelectedSong() {
     const song = SONG_DATABASE[selectedSongIndex];
     if (!song) return;
@@ -74,7 +74,7 @@ function playSelectedSong() {
     requestAnimationFrame(update);
 }
 
-// 3. 판정 트리거
+// 3. 판정 연출 트리가
 function triggerJudge(text, color, addScore, judgeType) {
     lastJudgeText = text;
     lastJudgeColor = color;
@@ -94,7 +94,7 @@ function triggerJudge(text, color, addScore, judgeType) {
     }
 }
 
-// 4. 메인 루프 (그리기 및 업데이트)
+// 4. 메인 루프 (그리기 및 물리)
 function update() {
     if (!isGaming) return;
 
@@ -119,14 +119,14 @@ function update() {
     ctx.lineTo(canvas.width, judgeLineY);
     ctx.stroke();
 
-    // 시작 카운트다운
+    // 시작 대기 카운트
     if (currentTime < 0) {
         ctx.fillStyle = "#ffcc00";
         ctx.font = "italic bold 40px sans-serif";
         ctx.textAlign = "center";
         ctx.fillText("READY...", canvas.width / 2, 250);
     } else {
-        // 노트 이동 및 MISS 판정
+        // 노트 그리기 및 MISS 판정
         for (let i = currentNotes.length - 1; i >= 0; i--) {
             let note = currentNotes[i];
             let timeDiff = note.time - currentTime;
@@ -139,19 +139,33 @@ function update() {
             }
 
             if (noteY > -20 && noteY < canvas.height + 20) {
-                ctx.fillStyle = "#00e5ff";
-                ctx.fillRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
+                if (note.type === "gold") {
+                    // ★ 금색 노트 (황금색 + 테두리 + 글로우 효과)
+                    ctx.fillStyle = "#ffd700";
+                    ctx.shadowColor = "#ffaa00";
+                    ctx.shadowBlur = 12;
+                    ctx.fillRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
+                    
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
+                    ctx.shadowBlur = 0; // 초기화
+                } else {
+                    // 일반 노트
+                    ctx.fillStyle = "#00e5ff";
+                    ctx.fillRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
+                }
             }
         }
     }
 
-    // 점수 UI
+    // 점수 표시
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 20px sans-serif";
     ctx.textAlign = "left";
     ctx.fillText(`SCORE: ${score}`, 15, 35);
 
-    // 판정/콤보 연출
+    // 판정 & 콤보 텍스트
     if (judgeTimer > 0 && currentTime >= 0) {
         judgeTimer--;
         ctx.textAlign = "center";
@@ -167,7 +181,7 @@ function update() {
         }
     }
 
-    // 종료 확인 (마지막 노트가 지난 후 약 1초 뒤 정산)
+    // 종료 판정
     const lastNoteTime = SONG_DATABASE[selectedSongIndex].notes.slice(-1)[0]?.time || 10;
     if (currentNotes.length === 0 && currentTime > lastNoteTime + 1.0) {
         isGaming = false;
@@ -178,7 +192,7 @@ function update() {
     requestAnimationFrame(update);
 }
 
-// 5. 결과 화면 출력
+// 5. 결과 화면
 function showResults() {
     const clearStatusElem = document.getElementById("clearStatus");
 
@@ -201,7 +215,7 @@ function showResults() {
     showScreen("resultScreen");
 }
 
-// 6. 키보드 입력
+// 6. 키 입력 및 금색 노트 2배 점수 판정
 window.addEventListener('keydown', (e) => {
     if (!isGaming) return;
     
@@ -229,16 +243,21 @@ function checkHit(lane, currentTime) {
     }
 
     if (targetIndex !== -1 && minDiff <= 0.16) {
+        const hitNote = currentNotes[targetIndex];
+        
+        // 금색 노트는 점수 2배!
+        const multiplier = (hitNote.type === "gold") ? 2 : 1;
+
         if (minDiff <= 0.08) {
-            triggerJudge("NICE", "#00e5ff", 500, "NICE");
+            triggerJudge("NICE", "#00e5ff", 500 * multiplier, "NICE");
         } else {
-            triggerJudge("GOOD", "#00ff66", 300, "GOOD");
+            triggerJudge("GOOD", "#00ff66", 300 * multiplier, "GOOD");
         }
         currentNotes.splice(targetIndex, 1);
     }
 }
 
-// 초기화 실행
+// 초기화
 window.onload = () => {
     renderSongList();
 };
