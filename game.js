@@ -8,7 +8,7 @@ const START_DELAY = 2; // Readiness 딜레이 (2초)
 
 // 🎵 오디오 객체 생성
 let bgmAudio = new Audio();
-bgmAudio.preload = "auto"; // 음악 미리 로드 설정
+bgmAudio.preload = "auto";
 
 let selectedSongIndex = 0;
 let isGaming = false;
@@ -28,7 +28,8 @@ let cntMiss = 0;
 let lastJudgeText = "";
 let judgeColor = "#fff";
 
-window.addEventListener("DOMContentLoaded", () => {
+// 1. 페이지 및 스크립트 로드가 완료되면 곡 목록 가져오기
+window.addEventListener("load", () => {
     loadSongList();
 });
 
@@ -37,15 +38,20 @@ function showScreen(screenId) {
     document.getElementById(screenId).classList.add('active');
 }
 
+// 🎵 곡 목록 불러오기 (초기화 및 안전장치 강화)
 function loadSongList() {
     const songListContainer = document.getElementById("songList");
+    if (!songListContainer) return;
+    
     songListContainer.innerHTML = "";
 
-    if (typeof SONG_DATABASE === 'undefined' || SONG_DATABASE.length === 0) {
-        songListContainer.innerHTML = "<div style='color:#aaa; text-align:center;'>등록된 곡이 없습니다.</div>";
+    // SONG_DATABASE 데이터가 없거나 비어있는 경우 방어
+    if (typeof SONG_DATABASE === 'undefined' || !Array.isArray(SONG_DATABASE) || SONG_DATABASE.length === 0) {
+        songListContainer.innerHTML = "<div style='color:#aaa; text-align:center; padding: 20px;'>등록된 곡이 없습니다.<br>songs/ 폴더 및 채보 JS 파일을 확인하세요.</div>";
         return;
     }
 
+    // 곡 리스트 카드 생성
     SONG_DATABASE.forEach((song, idx) => {
         const card = document.createElement("div");
         card.className = `song-card ${idx === selectedSongIndex ? 'selected' : ''}`;
@@ -63,19 +69,25 @@ function selectSong(index) {
     loadSongList();
 }
 
-// 로비로 돌아갈 때 음악 정지
+// 로비로 돌아갈 때
 function showSelectScreen() {
     isGaming = false;
     bgmAudio.pause();
     bgmAudio.currentTime = 0;
 
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    
+    // 로비 화면 띄우고 곡 목록 다시 갱신
     showScreen('selectScreen');
+    loadSongList();
 }
 
-// 🎵 [수정됨] 게임 시작 및 오디오 재생 처리
+// 🎵 게임 시작 및 오디오 재생 처리
 function playSelectedSong() {
-    if (typeof SONG_DATABASE === 'undefined' || !SONG_DATABASE[selectedSongIndex]) return;
+    if (typeof SONG_DATABASE === 'undefined' || !SONG_DATABASE[selectedSongIndex]) {
+        alert("선택된 곡 정보가 없습니다!");
+        return;
+    }
 
     const song = SONG_DATABASE[selectedSongIndex];
 
@@ -92,20 +104,18 @@ function playSelectedSong() {
     cntMiss = 0;
     lastJudgeText = "";
 
-    // 1. 클릭 시점에 오디오 세팅 및 무음 재생 시도 (브라우저 잠금 해제)
+    // 1. 클릭 시점에 오디오 미리 재생 시도 (브라우저 잠금 해제)
     if (song.bgm) {
         bgmAudio.src = song.bgm;
         bgmAudio.currentTime = 0;
         
-        // 버튼을 누른 바로 이 순간 play()를 호출하여 브라우저의 소리 차단을 해제합니다.
         let playPromise = bgmAudio.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                // 재생 성공 시 일단 일시정지 후 2초 뒤 재생
                 bgmAudio.pause();
                 bgmAudio.currentTime = 0;
             }).catch(error => {
-                console.error("오디오 재생 실패:", error);
+                console.error("오디오 잠금 해제 실패:", error);
             });
         }
     }
@@ -113,7 +123,7 @@ function playSelectedSong() {
     startTime = Date.now();
     isGaming = true;
 
-    // 2. 2초 카운트다운 후 실제 BGM 재생 시작
+    // 2. 2초 카운트다운 후 실제 BGM 재생
     setTimeout(() => {
         if (isGaming && song.bgm) {
             bgmAudio.currentTime = 0;
@@ -124,7 +134,7 @@ function playSelectedSong() {
     requestAnimationFrame(update);
 }
 
-// 메인 루프
+// 메인 프레임 루프
 function update() {
     if (!isGaming) return;
 
@@ -257,7 +267,7 @@ function drawUI() {
     ctx.textAlign = "left";
 }
 
-// 결과 화면 진입 및 음악 끄기
+// 결과 화면 진입
 function showResults() {
     isGaming = false;
     bgmAudio.pause();
