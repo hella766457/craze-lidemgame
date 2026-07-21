@@ -8,6 +8,7 @@ const START_DELAY = 2; // Readiness 딜레이 (2초)
 
 // 🎵 오디오 객체 생성
 let bgmAudio = new Audio();
+bgmAudio.preload = "auto"; // 음악 미리 로드 설정
 
 let selectedSongIndex = 0;
 let isGaming = false;
@@ -65,8 +66,6 @@ function selectSong(index) {
 // 로비로 돌아갈 때 음악 정지
 function showSelectScreen() {
     isGaming = false;
-    
-    // 🎵 음악 정지 및 초기화
     bgmAudio.pause();
     bgmAudio.currentTime = 0;
 
@@ -74,7 +73,7 @@ function showSelectScreen() {
     showScreen('selectScreen');
 }
 
-// 🎵 게임 시작 및 음악 재생
+// 🎵 [수정됨] 게임 시작 및 오디오 재생 처리
 function playSelectedSong() {
     if (typeof SONG_DATABASE === 'undefined' || !SONG_DATABASE[selectedSongIndex]) return;
 
@@ -93,19 +92,32 @@ function playSelectedSong() {
     cntMiss = 0;
     lastJudgeText = "";
 
-    // 🎵 음악 파일 세팅
+    // 1. 클릭 시점에 오디오 세팅 및 무음 재생 시도 (브라우저 잠금 해제)
     if (song.bgm) {
         bgmAudio.src = song.bgm;
         bgmAudio.currentTime = 0;
+        
+        // 버튼을 누른 바로 이 순간 play()를 호출하여 브라우저의 소리 차단을 해제합니다.
+        let playPromise = bgmAudio.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                // 재생 성공 시 일단 일시정지 후 2초 뒤 재생
+                bgmAudio.pause();
+                bgmAudio.currentTime = 0;
+            }).catch(error => {
+                console.error("오디오 재생 실패:", error);
+            });
+        }
     }
 
     startTime = Date.now();
     isGaming = true;
 
-    // 🎵 START_DELAY(2초) 준비 시간 후 음악 재생 시작
+    // 2. 2초 카운트다운 후 실제 BGM 재생 시작
     setTimeout(() => {
         if (isGaming && song.bgm) {
-            bgmAudio.play().catch(e => console.log("자동 재생 정책 제한:", e));
+            bgmAudio.currentTime = 0;
+            bgmAudio.play().catch(e => console.error("BGM 재생 오류:", e));
         }
     }, START_DELAY * 1000);
 
@@ -248,8 +260,6 @@ function drawUI() {
 // 결과 화면 진입 및 음악 끄기
 function showResults() {
     isGaming = false;
-    
-    // 🎵 음악 정지
     bgmAudio.pause();
 
     document.getElementById("resultScore").innerText = score.toLocaleString();
