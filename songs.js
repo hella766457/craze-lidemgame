@@ -1,65 +1,68 @@
 // 곡 및 채보 데이터베이스
 const SONG_DATABASE = [
-    {
-        id: "anzs_raid",
+    {id: "anzs_raid",
         title: "안즈스 레이드 BGM",
-        bpm: 130,
+        bpm: 120, // 4비트 박자 간격 기반 (1박 = 0.5초 / 2박 = 1.0초)
         keys: 4,
         difficulty: "Lv.4 헤비",
         speed: 480,
         notes: [
-            // [1. 초반 전주 구간: 4비트 천천히 떨어지는 단타 (1박자 = 0.46초)]
-            { lane: 0, time: 1.5 },
-            { lane: 1, time: 1.96 },
-            { lane: 2, time: 2.42 },
-            { lane: 3, time: 2.88 },
-            { lane: 1, time: 3.34 },
-            { lane: 2, time: 3.80 },
-            { lane: 0, time: 4.26 },
-            { lane: 3, time: 4.72 },
+            // ==========================================
+            // 1. [7.6초 ~ 15.0초] 전주 구간 (2박 - 1박 - 1박 반복)
+            // ==========================================
+            // Loop 1 (7.6s 시작)
+            { lane: 0, time: 7.6 },            // 시작 노트 (2박 대기)
+            { lane: 1, time: 8.6 },            // 1박
+            { lane: 2, time: 9.1 },            // 1박
 
-            // [2. 본곡 시작 임팩트: 금색 노트 동시타 + 16비트 연타 구간]
-            { lane: 0, time: 5.5, type: "gold" }, // ★ 황금 노트
-            { lane: 3, time: 5.5, type: "gold" }, // ★ 황금 노트 (동시타)
-            
-            // 계단식 연타
-            { lane: 1, time: 5.73 },
-            { lane: 1, time: 5.84 },
-            { lane: 1, time: 5.95 },
-            { lane: 2, time: 6.06 },
-            { lane: 2, time: 6.17 },
-            { lane: 2, time: 6.28 },
+            // Loop 2 (9.6s 시작)
+            { lane: 3, time: 9.6 },            // 2박 대기
+            { lane: 2, time: 10.6 },           // 1박
+            { lane: 1, time: 11.1 },           // 1박
 
-            // 트릴(Trill) 구간
-            { lane: 1, time: 6.5 },
-            { lane: 2, time: 6.62 },
-            { lane: 1, time: 6.74 },
-            { lane: 2, time: 6.86 },
-            { lane: 1, time: 6.98 },
-            { lane: 2, time: 7.10 },
+            // Loop 3 (11.6s 시작)
+            { lane: 0, time: 11.6 },           // 2박 대기
+            { lane: 2, time: 12.6 },           // 1박
+            { lane: 3, time: 13.1 },           // 1박
 
-            // [3. 하이라이트 구간: 화려한 폭타 + 금색 포인트 노트]
-            { lane: 0, time: 7.5 }, { lane: 1, time: 7.5 },
-            { lane: 2, time: 7.73 }, { lane: 3, time: 7.73 },
-            
-            // 하이라이트 금색 폭타 (2배 점수)
-            { lane: 0, time: 7.96, type: "gold" },
-            { lane: 2, time: 7.96, type: "gold" },
-            
-            { lane: 1, time: 8.19 }, { lane: 3, time: 8.19 },
-            
-            // 16비트 연속 폭타
-            { lane: 0, time: 8.42 }, { lane: 1, time: 8.535 }, 
-            { lane: 2, time: 8.65 }, { lane: 3, time: 8.765 },
-            
-            { lane: 0, time: 9.0, type: "gold" },
-            { lane: 1, time: 9.0, type: "gold" },
-            { lane: 2, time: 9.0, type: "gold" },
-            { lane: 3, time: 9.0, type: "gold" }, // ★ 4키 전체 금색 동시타
+            // Loop 4 (13.6s 시작 ~ 15s 진입 전 빌드업)
+            { lane: 1, time: 13.6 },           // 2박 대기
+            { lane: 0, time: 14.6 },           // 1박
+            { lane: 3, time: 14.85 },          // 변주 진입 예고 숏노트
 
-            { lane: 1, time: 9.6 }, { lane: 2, time: 9.83 },
-            { lane: 0, time: 10.06 }, { lane: 3, time: 10.29 }
-        ]
+            // ==========================================
+            // 2. [15.0초 ~ 23.0초] 메인 변주 구간 (베이스 + 4비트 드럼)
+            // 박자는 유지되되 드럼/베이스 타격감을 살려 동시타 & 금색 노트 배치!
+            // ==========================================
+            // 15.0s: 베이스/드럼 강렬한 시작 (임팩트 금색 동시타)
+            { lane: 0, time: 15.0, type: "gold" },
+            { lane: 3, time: 15.0, type: "gold" },
+            { lane: 1, time: 16.0 },           // 1박
+            { lane: 2, time: 16.5 },           // 1박
+
+            // 17.0s
+            { lane: 1, time: 17.0, type: "gold" },
+            { lane: 2, time: 17.0, type: "gold" },
+            { lane: 0, time: 18.0 },
+            { lane: 3, time: 18.5 },
+
+            // 19.0s (클라이맥스 베이스 연타)
+            { lane: 0, time: 19.0, type: "gold" },
+            { lane: 1, time: 19.0, type: "gold" },
+            { lane: 2, time: 20.0 },
+            { lane: 3, time: 20.5 },
+
+            // 21.0s ~ 23.0s (피니시 하이라이트)
+            { lane: 0, time: 21.0 },
+            { lane: 3, time: 21.0 },
+            { lane: 1, time: 21.5 },
+            { lane: 2, time: 22.0 },
+            
+            // 23.0s: 곡을 마무리하는 4키 전체 금색 동시타!
+            { lane: 0, time: 23.0, type: "gold" },
+            { lane: 1, time: 23.0, type: "gold" },
+            { lane: 2, time: 23.0, type: "gold" },
+            { lane: 3, time: 23.0, type: "gold" }
     },
     {
         id: "test_song_1",
