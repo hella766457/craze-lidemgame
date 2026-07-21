@@ -3,6 +3,7 @@ window.SONG_DATABASE = window.SONG_DATABASE || [];
 window.SONG_DATABASE.push({
     id: "anzs_raid",
     title: "안즈스 레이드 BGM",
+    bgm: "audio/anzs_raid.mp3", // 👈 음악 파일 경로 추가!
     bpm: 120,
     keys: 4,
     difficulty: "Custom",
