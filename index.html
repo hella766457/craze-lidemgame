@@ -3,150 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Rhythm Game</title>
+    <title>웹 리듬게임</title>
     <style>
-        * { box-sizing: border-box; }
-        body {
-            background-color: #121212;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #111;
+            color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
             overflow: hidden;
         }
 
+        /* 화면 컨테이너 */
+        .container {
+            position: relative;
+            width: 400px;
+            height: 600px;
+            background-color: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+        }
+
+        /* 각 화면 공통 스타일 */
         .screen {
             display: none;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 100%;
-            max-width: 400px;
-            height: 100vh;
-            max-height: 650px;
-            background-color: #1e1e1e;
-            border: 2px solid #333;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
             padding: 20px;
-            text-align: center;
         }
 
-        .active { display: flex; }
-        h1 { margin-bottom: 10px; color: #00e5ff; }
-        p { color: #aaa; margin-bottom: 30px; }
-
-        .btn {
-            background: linear-gradient(135deg, #00e5ff, #0077ff);
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            width: 80%;
-            margin: 10px 0;
+        .screen.active {
+            display: flex;
         }
 
-        .btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+        /* 1. 곡 선택 화면 (selectScreen) */
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #00e5ff;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
         }
 
-        #songListContainer {
+        .song-list {
             width: 100%;
-            max-height: 350px;
+            flex: 1;
             overflow-y: auto;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .song-card {
-            background: #2a2a2a;
-            border: 2px solid #333;
-            border-radius: 10px;
-            width: 100%;
+            background-color: #2a2a2a;
             padding: 15px;
-            margin-bottom: 10px;
-            text-align: left;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .song-card:hover {
+            background-color: #333;
         }
 
         .song-card.selected {
             border-color: #00e5ff;
-            background: #333;
+            background-color: #253545;
         }
 
-        .song-title { font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 6px; }
-        .song-info { font-size: 13px; color: #bbb; margin-bottom: 8px; }
-        .difficulty { 
-            display: inline-block; 
-            background-color: #ff0055; 
-            color: white; 
-            padding: 3px 6px; 
-            border-radius: 4px; 
+        .song-title {
+            font-size: 18px;
             font-weight: bold;
-            font-size: 11px;
+            margin-bottom: 5px;
         }
 
-        .result-status { font-size: 32px; font-weight: 900; font-style: italic; margin-bottom: 15px; }
-        .result-box { background-color: #2a2a2a; border-radius: 10px; width: 100%; padding: 20px; margin-bottom: 20px; }
-        .result-row { display: flex; justify-content: space-between; font-size: 18px; margin: 10px 0; font-weight: bold; }
-        .count-nice { color: #00e5ff; }
-        .count-good { color: #00ff66; }
-        .count-miss { color: #ff3333; }
+        .song-info {
+            font-size: 13px;
+            color: #aaa;
+        }
 
-        canvas {
-            border: 2px solid #444;
-            background-color: #000;
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #00e5ff;
+            color: #111;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #00b3cc;
+        }
+
+        /* 2. 게임 인게임 화면 (gameScreen) */
+        #gameCanvas {
+            background-color: #050505;
+            display: block;
+        }
+
+        /* 3. 결과 화면 (resultScreen) */
+        .result-box {
+            width: 100%;
+            background-color: #222;
+            padding: 20px;
             border-radius: 8px;
-            max-height: 85vh;
-            max-width: 100%;
-            object-fit: contain;
+            margin-bottom: 20px;
+            text-align: center;
         }
+
+        .result-score {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00e5ff;
+            margin: 10px 0 20px 0;
+        }
+
+        .result-detail {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-align: left;
+            font-size: 15px;
+        }
+
+        .result-detail p {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #333;
+            padding-bottom: 4px;
+        }
+
+        .res-perfect { color: #00e5ff; }
+        .res-good { color: #00ff88; }
+        .res-bad { color: #ffbb00; }
+        .res-miss { color: #ff3355; }
+        .res-maxcombo { color: #fff; }
     </style>
 </head>
 <body>
 
-    <div id="lobbyScreen" class="screen active">
-        <h1>RHYTHM GAME</h1>
-        <p>웹으로 즐기는 건반형 리듬게임</p>
-        <button class="btn" onclick="showScreen('selectScreen')">GAME START</button>
-    </div>
-
-    <div id="selectScreen" class="screen">
-        <h2>곡 선택</h2>
-        <div id="songListContainer"></div>
-        <button class="btn" onclick="playSelectedSong()">PLAY</button>
-        <button class="btn" style="background: #444;" onclick="showScreen('lobbyScreen')">뒤로 가기</button>
-    </div>
-
-    <div id="gameScreen" class="screen" style="padding: 0; background: transparent; border: none; height: auto;">
-        <canvas id="gameCanvas" width="400" height="600"></canvas>
-    </div>
-
-    <div id="resultScreen" class="screen">
-        <div id="clearStatus" class="result-status">STAGE CLEAR</div>
-        <div class="result-box">
-            <div class="result-row"><span>SCORE</span><span id="finalScore" style="color:#ffcc00;">0</span></div>
-            <hr style="border: 0.5px solid #444; margin: 15px 0;">
-            <div class="result-row"><span class="count-nice">NICE</span><span id="niceCount">0</span></div>
-            <div class="result-row"><span class="count-good">GOOD</span><span id="goodCount">0</span></div>
-            <div class="result-row"><span class="count-miss">MISS</span><span id="missCount">0</span></div>
+    <div class="container">
+        <div id="selectScreen" class="screen active">
+            <h1>SELECT SONG</h1>
+            <div id="songList" class="song-list">
+                </div>
+            <button class="btn" onclick="playSelectedSong()">START GAME</button>
         </div>
-        <button class="btn" onclick="showScreen('selectScreen')">곡 선택으로 돌아가기</button>
+
+        <div id="gameScreen" class="screen" style="padding: 0;">
+            <canvas id="gameCanvas" width="400" height="600"></canvas>
+        </div>
+
+        <div id="resultScreen" class="screen">
+            <h1>RESULT</h1>
+            <div class="result-box">
+                <div>TOTAL SCORE</div>
+                <div id="resultScore" class="result-score">0</div>
+
+                <div class="result-detail">
+                    <p>PERFECT <span id="resPerfect" class="res-perfect">0</span></p>
+                    <p>GOOD <span id="resGood" class="res-good">0</span></p>
+                    <p>BAD <span id="resBad" class="res-bad">0</span></p>
+                    <p>MISS <span id="resMiss" class="res-miss">0</span></p>
+                    <p>MAX COMBO <span id="resMaxCombo" class="res-maxcombo">0</span></p>
+                </div>
+            </div>
+            <button class="btn" onclick="showSelectScreen()">SONG SELECT</button>
+        </div>
     </div>
 
-    <script src="songs/anzs_raid.js" defer></script>
-    <script src="songs/test_song.js" defer></script>
+    <script src="songs/anzs_raid.js"></script>
 
-    <script src="game.js" defer></script>
+    <script src="game.js"></script>
 </body>
 </html>
