@@ -13,44 +13,163 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
         }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 400px;
+            height: 600px;
+            background-color: #1e1e1e;
+            border: 2px solid #333;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .active {
+            display: flex;
+        }
+
+        h1 { margin-bottom: 10px; color: #00e5ff; }
+        p { color: #aaa; margin-bottom: 30px; }
+
+        .btn {
+            background: linear-gradient(135deg, #00e5ff, #0077ff);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 80%;
+            margin: 10px 0;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+        }
+
+        /* 곡 선택 카드 스타일 */
+        .song-card {
+            background: #2a2a2a;
+            border: 2px solid #00e5ff;
+            border-radius: 10px;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .song-title { font-size: 20px; font-weight: bold; color: #fff; margin-bottom: 8px; }
+        .song-info { font-size: 14px; color: #bbb; margin-bottom: 12px; }
+        .difficulty { 
+            display: inline-block; 
+            background-color: #ff0055; 
+            color: white; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-weight: bold;
+            font-size: 12px;
+        }
+
         canvas {
-            border: 2px solid #fff;
+            border: 2px solid #444;
             background-color: #000;
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
-    <h1>4-Key Web Rhythm Game</h1>
-    <p>조작키: [D] [F] [J] [K] 또는 게임패드 버튼</p>
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+    <div id="lobbyScreen" class="screen active">
+        <h1>RHYTHM GAME</h1>
+        <p>웹으로 즐기는 건반형 리듬게임</p>
+        <button class="btn" onclick="showScreen('selectScreen')">GAME START</button>
+    </div>
+
+    <div id="selectScreen" class="screen">
+        <h2>곡 선택</h2>
+        <div class="song-card">
+            <div class="song-title">테스트 곡</div>
+            <div class="song-info">BPM: 120 | 4 Keys</div>
+            <span class="difficulty">HARD Lv.5</span>
+        </div>
+        <button class="btn" onclick="startGame()">PLAY</button>
+        <button class="btn" style="background: #444;" onclick="showScreen('lobbyScreen')">뒤로 가기</button>
+    </div>
+
+    <div id="gameScreen" class="screen" style="padding: 0; background: transparent; border: none;">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+    </div>
 
     <script>
+        // 화면 전환 함수
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
         const keys = ['d', 'f', 'j', 'k'];
         const laneWidth = 100;
         const judgeLineY = 500;
-        
-        // 노트 데이터 (초 단위)
-        let notes = [
-            { lane: 0, time: 2.0 },
-            { lane: 1, time: 2.5 },
-            { lane: 2, time: 3.0 },
-            { lane: 3, time: 3.5 },
-            { lane: 1, time: 4.0 },
-            { lane: 2, time: 4.0 }
+        let isGaming = false;
+        let startTime = 0;
+        let speed = 450; // 노트 속도
+
+        // 패턴이 풍성해진 '테스트 곡 (Lv.5)' 채보 데이터
+        let notes = [];
+        const originalNotes = [
+            // Intro
+            { lane: 0, time: 1.5 }, { lane: 1, time: 2.0 }, { lane: 2, time: 2.5 }, { lane: 3, time: 3.0 },
+            { lane: 2, time: 3.5 }, { lane: 1, time: 4.0 }, { lane: 0, time: 4.5 },
+            
+            // 동시 치기 & 16비트 연타 (Lv.5 난이도 요소)
+            { lane: 0, time: 5.5 }, { lane: 3, time: 5.5 }, // 동시
+            { lane: 1, time: 6.0 }, { lane: 2, time: 6.25 }, { lane: 1, time: 6.5 }, { lane: 2, time: 6.75 },
+            
+            // 계단형 노트
+            { lane: 0, time: 7.5 }, { lane: 1, time: 7.75 }, { lane: 2, time: 8.0 }, { lane: 3, time: 8.25 },
+            { lane: 2, time: 8.5 }, { lane: 1, time: 8.75 }, { lane: 0, time: 9.0 },
+            
+            // 클라이맥스 동시타 패턴
+            { lane: 0, time: 10.0 }, { lane: 2, time: 10.0 },
+            { lane: 1, time: 10.5 }, { lane: 3, time: 10.5 },
+            { lane: 0, time: 11.0 }, { lane: 1, time: 11.0 }, { lane: 2, time: 11.0 }, { lane: 3, time: 11.0 }, // 4키 동시!
+            
+            // Finishing Outro
+            { lane: 1, time: 12.0 }, { lane: 2, time: 12.3 }, { lane: 1, time: 12.6 },
+            { lane: 0, time: 13.5 }, { lane: 3, time: 13.5 }
         ];
 
-        let startTime = Date.now();
-        let speed = 400; // 노트 떨어지는 속도 (px/sec)
+        function startGame() {
+            showScreen('gameScreen');
+            // 노트 배열 복사 및 초기화
+            notes = JSON.parse(JSON.stringify(originalNotes));
+            startTime = Date.now();
+            isGaming = true;
+            requestAnimationFrame(update);
+        }
 
         function update() {
-            let currentTime = (Date.now() - startTime) / 1000; // 경과 시간 (초)
+            if (!isGaming) return;
 
-            // 화면 그리기
+            let currentTime = (Date.now() - startTime) / 1000;
+
+            // 배경 클리어
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // 레인 구분선
@@ -75,17 +194,26 @@
                 let timeDiff = note.time - currentTime;
                 let noteY = judgeLineY - (timeDiff * speed);
 
-                if (noteY > 0 && noteY < canvas.height) {
+                if (noteY > -20 && noteY < canvas.height + 20) {
                     ctx.fillStyle = "#00e5ff";
-                    ctx.fillRect(note.lane * laneWidth + 10, noteY - 10, laneWidth - 20, 20);
+                    ctx.fillRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
                 }
             });
+
+            // 게임 종료 조건 (모든 노트가 지나갔을 때)
+            if (notes.length === 0 || currentTime > 15) {
+                isGaming = false;
+                alert("Game Over / Clear!");
+                showScreen('selectScreen');
+                return;
+            }
 
             requestAnimationFrame(update);
         }
 
         // 키보드 입력 처리
         window.addEventListener('keydown', (e) => {
+            if (!isGaming) return;
             const keyIndex = keys.indexOf(e.key.toLowerCase());
             if (keyIndex !== -1) {
                 checkHit(keyIndex);
@@ -94,16 +222,13 @@
 
         function checkHit(lane) {
             let currentTime = (Date.now() - startTime) / 1000;
-            // 가장 가까운 노트 찾기
-            let hitNoteIndex = notes.findIndex(n => n.lane === lane && Math.abs(n.time - currentTime) < 0.2);
+            // 가장 가까운 노트 찾기 (판정 범위 ±0.15초)
+            let hitNoteIndex = notes.findIndex(n => n.lane === lane && Math.abs(n.time - currentTime) < 0.15);
             
             if (hitNoteIndex !== -1) {
-                console.log("PERFECT!");
-                notes.splice(hitNoteIndex, 1); // 맞춘 노트 제거
+                notes.splice(hitNoteIndex, 1); // 판정 성공 시 노트 제거
             }
         }
-
-        update();
     </script>
 </body>
 </html>
