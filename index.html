@@ -59,7 +59,6 @@
             box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
         }
 
-        /* 곡 선택 카드 스타일 */
         .song-card {
             background: #2a2a2a;
             border: 2px solid #00e5ff;
@@ -114,7 +113,6 @@
     </div>
 
     <script>
-        // 화면 전환 함수
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
@@ -128,40 +126,51 @@
         const judgeLineY = 500;
         let isGaming = false;
         let startTime = 0;
-        let speed = 450; // 노트 속도
+        let speed = 450;
 
-        // 패턴이 풍성해진 '테스트 곡 (Lv.5)' 채보 데이터
+        // 점수 및 판정 관련 변수
+        let score = 0;
+        let combo = 0;
+        let lastJudgeText = "";
+        let lastJudgeColor = "#fff";
+        let judgeTimer = 0;
+
         let notes = [];
         const originalNotes = [
-            // Intro
             { lane: 0, time: 1.5 }, { lane: 1, time: 2.0 }, { lane: 2, time: 2.5 }, { lane: 3, time: 3.0 },
             { lane: 2, time: 3.5 }, { lane: 1, time: 4.0 }, { lane: 0, time: 4.5 },
-            
-            // 동시 치기 & 16비트 연타 (Lv.5 난이도 요소)
-            { lane: 0, time: 5.5 }, { lane: 3, time: 5.5 }, // 동시
+            { lane: 0, time: 5.5 }, { lane: 3, time: 5.5 },
             { lane: 1, time: 6.0 }, { lane: 2, time: 6.25 }, { lane: 1, time: 6.5 }, { lane: 2, time: 6.75 },
-            
-            // 계단형 노트
             { lane: 0, time: 7.5 }, { lane: 1, time: 7.75 }, { lane: 2, time: 8.0 }, { lane: 3, time: 8.25 },
             { lane: 2, time: 8.5 }, { lane: 1, time: 8.75 }, { lane: 0, time: 9.0 },
-            
-            // 클라이맥스 동시타 패턴
             { lane: 0, time: 10.0 }, { lane: 2, time: 10.0 },
             { lane: 1, time: 10.5 }, { lane: 3, time: 10.5 },
-            { lane: 0, time: 11.0 }, { lane: 1, time: 11.0 }, { lane: 2, time: 11.0 }, { lane: 3, time: 11.0 }, // 4키 동시!
-            
-            // Finishing Outro
+            { lane: 0, time: 11.0 }, { lane: 1, time: 11.0 }, { lane: 2, time: 11.0 }, { lane: 3, time: 11.0 },
             { lane: 1, time: 12.0 }, { lane: 2, time: 12.3 }, { lane: 1, time: 12.6 },
             { lane: 0, time: 13.5 }, { lane: 3, time: 13.5 }
         ];
 
         function startGame() {
             showScreen('gameScreen');
-            // 노트 배열 복사 및 초기화
             notes = JSON.parse(JSON.stringify(originalNotes));
             startTime = Date.now();
+            score = 0;
+            combo = 0;
+            lastJudgeText = "";
             isGaming = true;
             requestAnimationFrame(update);
+        }
+
+        function triggerJudge(text, color, addScore, isHit) {
+            lastJudgeText = text;
+            lastJudgeColor = color;
+            judgeTimer = 30; // 판정 문구 유지 프레임 수
+            if (isHit) {
+                combo++;
+                score += addScore;
+            } else {
+                combo = 0; // MISS시 콤보 리셋
+            }
         }
 
         function update() {
@@ -169,7 +178,6 @@
 
             let currentTime = (Date.now() - startTime) / 1000;
 
-            // 배경 클리어
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // 레인 구분선
@@ -189,21 +197,53 @@
             ctx.lineTo(canvas.width, judgeLineY);
             ctx.stroke();
 
-            // 노트 그리기
-            notes.forEach(note => {
+            // 노트 그리기 및 놓친 노트(MISS) 검사
+            for (let i = notes.length - 1; i >= 0; i--) {
+                let note = notes[i];
                 let timeDiff = note.time - currentTime;
                 let noteY = judgeLineY - (timeDiff * speed);
+
+                // 판정선을 지나쳐버린 경우 -> MISS 처리
+                if (timeDiff < -0.16) {
+                    triggerJudge("MISS", "#ff3333", 0, false);
+                    notes.splice(i, 1);
+                    continue;
+                }
 
                 if (noteY > -20 && noteY < canvas.height + 20) {
                     ctx.fillStyle = "#00e5ff";
                     ctx.fillRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
                 }
-            });
+            }
 
-            // 게임 종료 조건 (모든 노트가 지나갔을 때)
-            if (notes.length === 0 || currentTime > 15) {
+            // UI 표시 (점수)
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 20px sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText(`SCORE: ${score}`, 15, 35);
+
+            // 판정 및 콤보 연출
+            if (judgeTimer > 0) {
+                judgeTimer--;
+                ctx.textAlign = "center";
+                
+                // 판정 텍스트 (NICE / GOOD / MISS)
+                ctx.fillStyle = lastJudgeColor;
+                ctx.font = "italic bold 36px sans-serif";
+                ctx.fillText(lastJudgeText, canvas.width / 2, 300);
+
+                // 콤보 표시
+                if (combo > 1) {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "bold 22px sans-serif";
+                    ctx.fillText(`${combo} COMBO`, canvas.width / 2, 335);
+                }
+            }
+
+            // 게임 종료 조건
+            if (notes.length === 0 && currentTime > 14.5) {
                 isGaming = false;
-                alert("Game Over / Clear!");
+                alert(`Game Clear!\n최종 점수: ${score}`);
                 showScreen('selectScreen');
                 return;
             }
@@ -211,7 +251,7 @@
             requestAnimationFrame(update);
         }
 
-        // 키보드 입력 처리
+        // 키보드 입력 처리 및 판정 로직
         window.addEventListener('keydown', (e) => {
             if (!isGaming) return;
             const keyIndex = keys.indexOf(e.key.toLowerCase());
@@ -222,11 +262,31 @@
 
         function checkHit(lane) {
             let currentTime = (Date.now() - startTime) / 1000;
-            // 가장 가까운 노트 찾기 (판정 범위 ±0.15초)
-            let hitNoteIndex = notes.findIndex(n => n.lane === lane && Math.abs(n.time - currentTime) < 0.15);
             
-            if (hitNoteIndex !== -1) {
-                notes.splice(hitNoteIndex, 1); // 판정 성공 시 노트 제거
+            // 해당 레인에서 가장 가까운 노트 찾기
+            let targetIndex = -1;
+            let minDiff = 999;
+
+            for (let i = 0; i < notes.length; i++) {
+                if (notes[i].lane === lane) {
+                    let diff = Math.abs(notes[i].time - currentTime);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        targetIndex = i;
+                    }
+                }
+            }
+
+            // 판정 세부 계산
+            if (targetIndex !== -1 && minDiff <= 0.16) {
+                if (minDiff <= 0.08) {
+                    // NICE (최상)
+                    triggerJudge("NICE", "#00e5ff", 500, true);
+                } else {
+                    // GOOD (보통)
+                    triggerJudge("GOOD", "#00ff66", 300, true);
+                }
+                notes.splice(targetIndex, 1);
             }
         }
     </script>
