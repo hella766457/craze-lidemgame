@@ -4,9 +4,9 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-const keys = ['d', 'f', 'j', 'k']; // 4키
-const laneWidth = 100;             // 레인 폭
-const judgeLineY = 500;            // 판정선 Y 좌표
+const keys = ['d', 'f', 'j', 'k'];
+const laneWidth = 100;
+const judgeLineY = 500;
 
 // 🎵 오디오 객체
 let bgmAudio = new Audio();
@@ -72,7 +72,7 @@ function renderSongList() {
         songListContainer.innerHTML = `
             <div style="color:#aaa; text-align:center; padding: 20px;">
                 등록된 곡이 없습니다.<br>
-                songs/ 폴더 및 채보 파일(.js) 연결을 확인하세요.
+                index.html 하단의 songs/*.js 파일 연결을 확인해 주세요.
             </div>`;
         return;
     }
@@ -80,6 +80,8 @@ function renderSongList() {
     SONG_DATABASE.forEach((song, idx) => {
         const card = document.createElement("div");
         card.className = `song-card ${idx === selectedSongIndex ? 'selected' : ''}`;
+        
+        // 카드 클릭 시 플레이가 아니라 선택(선택 테두리)만 진행
         card.onclick = () => {
             selectedSongIndex = idx;
             renderSongList();
@@ -124,7 +126,7 @@ function playSelectedSong() {
         bgmAudio.src = song.bgm;
         bgmAudio.currentTime = 0;
         bgmAudio.play().catch(err => {
-            console.warn("오디오 자동재생 제한:", err);
+            console.warn("오디오 재생 실패/제한:", err);
         });
     }
 
@@ -173,7 +175,7 @@ function update() {
             ctx.fillRect(note.lane * laneWidth + 10, noteY - 10, laneWidth - 20, 20);
         }
 
-        // 판정선 하단 지나쳤을 때 (MISS)
+        // 판정선을 지나쳤을 때
         if (timeDiff < -0.15) {
             processJudge("MISS");
             currentNotes.splice(i, 1);
@@ -182,8 +184,9 @@ function update() {
 
     drawUI();
 
+    // 곡의 모든 노트 처리가 끝나면 결과 화면으로 이동
     if (currentNotes.length === 0 && currentTime > 1) {
-        setTimeout(showResults, 1500);
+        setTimeout(showResults, 1200);
         return;
     }
 
@@ -191,13 +194,11 @@ function update() {
 }
 
 function drawUI() {
-    // 점수
     ctx.fillStyle = "#fff";
     ctx.font = "bold 20px sans-serif";
     ctx.textAlign = "left";
     ctx.fillText(`SCORE: ${score}`, 15, 35);
 
-    // 콤보
     if (combo > 0) {
         ctx.fillStyle = "#00e5ff";
         ctx.font = "bold 32px sans-serif";
@@ -205,7 +206,6 @@ function drawUI() {
         ctx.fillText(`${combo} COMBO`, canvas.width / 2, 230);
     }
 
-    // 판정 문구 (PERFECT, GOOD, BAD, MISS)
     if (lastJudgeText) {
         ctx.fillStyle = judgeColor;
         ctx.font = "bold 28px sans-serif";
@@ -215,7 +215,7 @@ function drawUI() {
 }
 
 // ==========================================
-// 4. 키 입력 및 4단계 판정 로직
+// 4. 키 입력 및 판정 처리
 // ==========================================
 
 window.addEventListener("keydown", (e) => {
@@ -241,7 +241,6 @@ window.addEventListener("keydown", (e) => {
         }
     }
 
-    // 판정 오차 범위 계산 (초 단위)
     if (targetIndex !== -1 && minTimeDiff < 0.20) {
         if (minTimeDiff <= 0.04) {
             processJudge("PERFECT");
@@ -262,45 +261,50 @@ function processJudge(judge) {
         score += 1000;
         combo++;
         cntPerfect++;
-        judgeColor = "#00e5ff"; // 하늘색
+        judgeColor = "#00e5ff";
     } else if (judge === "GOOD") {
         score += 500;
         combo++;
         cntGood++;
-        judgeColor = "#00ff88"; // 연두색
+        judgeColor = "#00ff88";
     } else if (judge === "BAD") {
         score += 100;
-        combo = 0; // BAD는 콤보 초기화
+        combo = 0;
         cntBad++;
-        judgeColor = "#ffbb00"; // 주황색
+        judgeColor = "#ffbb00";
     } else if (judge === "MISS") {
-        combo = 0; // MISS 콤보 초기화
+        combo = 0;
         cntMiss++;
-        judgeColor = "#ff3355"; // 빨간색
+        judgeColor = "#ff3355";
     }
 
     if (combo > maxCombo) maxCombo = combo;
 }
 
 // ==========================================
-// 5. 결과 화면 출력 (PERFECT / GOOD / BAD / MISS)
+// 5. 스코어보드 결과 출력
 // ==========================================
 
 function showResults() {
     isGaming = false;
     if (bgmAudio) bgmAudio.pause();
 
-    const setEl = (id, val) => {
+    // 스코어 및 세부 판정 수치 대입
+    const scoreElement = document.getElementById("resultScore");
+    if (scoreElement) {
+        scoreElement.innerText = score.toLocaleString();
+    }
+
+    const setVal = (id, val) => {
         const el = document.getElementById(id);
         if (el) el.innerText = val;
     };
 
-    setEl("resultScore", score.toLocaleString());
-    setEl("resPerfect", cntPerfect);
-    setEl("resGood", cntGood);
-    setEl("resBad", cntBad);
-    setEl("resMiss", cntMiss);
-    setEl("resMaxCombo", maxCombo);
+    setVal("resPerfect", cntPerfect);
+    setVal("resGood", cntGood);
+    setVal("resBad", cntBad);
+    setVal("resMiss", cntMiss);
+    setVal("resMaxCombo", maxCombo);
 
     showScreen('resultScreen');
 }
