@@ -28,7 +28,6 @@ let cntMiss = 0;
 let lastJudgeText = "";
 let judgeColor = "#fff";
 
-// 1. 페이지 및 스크립트 로드가 완료되면 곡 목록 가져오기
 window.addEventListener("load", () => {
     loadSongList();
 });
@@ -38,20 +37,17 @@ function showScreen(screenId) {
     document.getElementById(screenId).classList.add('active');
 }
 
-// 🎵 곡 목록 불러오기 (초기화 및 안전장치 강화)
 function loadSongList() {
     const songListContainer = document.getElementById("songList");
     if (!songListContainer) return;
     
     songListContainer.innerHTML = "";
 
-    // SONG_DATABASE 데이터가 없거나 비어있는 경우 방어
     if (typeof SONG_DATABASE === 'undefined' || !Array.isArray(SONG_DATABASE) || SONG_DATABASE.length === 0) {
         songListContainer.innerHTML = "<div style='color:#aaa; text-align:center; padding: 20px;'>등록된 곡이 없습니다.<br>songs/ 폴더 및 채보 JS 파일을 확인하세요.</div>";
         return;
     }
 
-    // 곡 리스트 카드 생성
     SONG_DATABASE.forEach((song, idx) => {
         const card = document.createElement("div");
         card.className = `song-card ${idx === selectedSongIndex ? 'selected' : ''}`;
@@ -69,7 +65,6 @@ function selectSong(index) {
     loadSongList();
 }
 
-// 로비로 돌아갈 때
 function showSelectScreen() {
     isGaming = false;
     bgmAudio.pause();
@@ -77,12 +72,11 @@ function showSelectScreen() {
 
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     
-    // 로비 화면 띄우고 곡 목록 다시 갱신
     showScreen('selectScreen');
     loadSongList();
 }
 
-// 🎵 게임 시작 및 오디오 재생 처리
+// 🎵 게임 시작 및 타이밍 고쳐진 오디오 재생 처리
 function playSelectedSong() {
     if (typeof SONG_DATABASE === 'undefined' || !SONG_DATABASE[selectedSongIndex]) {
         alert("선택된 곡 정보가 없습니다!");
@@ -104,7 +98,7 @@ function playSelectedSong() {
     cntMiss = 0;
     lastJudgeText = "";
 
-    // 1. 클릭 시점에 오디오 미리 재생 시도 (브라우저 잠금 해제)
+    // 클릭 오디오 권한 해제
     if (song.bgm) {
         bgmAudio.src = song.bgm;
         bgmAudio.currentTime = 0;
@@ -123,13 +117,11 @@ function playSelectedSong() {
     startTime = Date.now();
     isGaming = true;
 
-    // 2. 2초 카운트다운 후 실제 BGM 재생
-    setTimeout(() => {
-        if (isGaming && song.bgm) {
-            bgmAudio.currentTime = 0;
-            bgmAudio.play().catch(e => console.error("BGM 재생 오류:", e));
-        }
-    }, START_DELAY * 1000);
+    // 🎵 [수정됨] 음악을 딜레이 없이 당겨서 바로 시작하도록 조정
+    if (song.bgm) {
+        bgmAudio.currentTime = 0;
+        bgmAudio.play().catch(e => console.error("BGM 재생 오류:", e));
+    }
 
     requestAnimationFrame(update);
 }
@@ -140,7 +132,13 @@ function update() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    let currentTime = (Date.now() - startTime) / 1000 - START_DELAY;
+    // 🎵 노트 타임과 음악 재생 시간을 동기화 (START_DELAY 제거)
+    let currentTime = (Date.now() - startTime) / 1000;
+
+    // 오디오 싱크에 맞추기 (음악이 들어갔을 경우 음악의 실제 시점을 기준으로 측정)
+    if (bgmAudio && !bgmAudio.paused && bgmAudio.currentTime > 0) {
+        currentTime = bgmAudio.currentTime;
+    }
 
     // 레인 구분선
     for (let i = 1; i < 4; i++) {
@@ -194,7 +192,9 @@ window.addEventListener("keydown", (e) => {
     const keyIndex = keys.indexOf(e.key.toLowerCase());
     if (keyIndex === -1) return;
 
-    let currentTime = (Date.now() - startTime) / 1000 - START_DELAY;
+    let currentTime = (bgmAudio && !bgmAudio.paused && bgmAudio.currentTime > 0) 
+        ? bgmAudio.currentTime 
+        : (Date.now() - startTime) / 1000;
 
     let targetIndex = -1;
     let minTimeDiff = 999;
@@ -267,7 +267,6 @@ function drawUI() {
     ctx.textAlign = "left";
 }
 
-// 결과 화면 진입
 function showResults() {
     isGaming = false;
     bgmAudio.pause();
