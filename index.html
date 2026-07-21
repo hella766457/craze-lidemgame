@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Rhythm Game</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: sans-serif;
+        }
+        canvas {
+            border: 2px solid #fff;
+            background-color: #000;
+        }
+    </style>
+</head>
+<body>
+    <h1>4-Key Web Rhythm Game</h1>
+    <p>조작키: [D] [F] [J] [K] 또는 게임패드 버튼</p>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const keys = ['d', 'f', 'j', 'k'];
+        const laneWidth = 100;
+        const judgeLineY = 500;
+        
+        // 노트 데이터 (초 단위)
+        let notes = [
+            { lane: 0, time: 2.0 },
+            { lane: 1, time: 2.5 },
+            { lane: 2, time: 3.0 },
+            { lane: 3, time: 3.5 },
+            { lane: 1, time: 4.0 },
+            { lane: 2, time: 4.0 }
+        ];
+
+        let startTime = Date.now();
+        let speed = 400; // 노트 떨어지는 속도 (px/sec)
+
+        function update() {
+            let currentTime = (Date.now() - startTime) / 1000; // 경과 시간 (초)
+
+            // 화면 그리기
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 레인 구분선
+            for (let i = 1; i < 4; i++) {
+                ctx.strokeStyle = "#333";
+                ctx.beginPath();
+                ctx.moveTo(i * laneWidth, 0);
+                ctx.lineTo(i * laneWidth, canvas.height);
+                ctx.stroke();
+            }
+
+            // 판정선
+            ctx.strokeStyle = "#ff0055";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, judgeLineY);
+            ctx.lineTo(canvas.width, judgeLineY);
+            ctx.stroke();
+
+            // 노트 그리기
+            notes.forEach(note => {
+                let timeDiff = note.time - currentTime;
+                let noteY = judgeLineY - (timeDiff * speed);
+
+                if (noteY > 0 && noteY < canvas.height) {
+                    ctx.fillStyle = "#00e5ff";
+                    ctx.fillRect(note.lane * laneWidth + 10, noteY - 10, laneWidth - 20, 20);
+                }
+            });
+
+            requestAnimationFrame(update);
+        }
+
+        // 키보드 입력 처리
+        window.addEventListener('keydown', (e) => {
+            const keyIndex = keys.indexOf(e.key.toLowerCase());
+            if (keyIndex !== -1) {
+                checkHit(keyIndex);
+            }
+        });
+
+        function checkHit(lane) {
+            let currentTime = (Date.now() - startTime) / 1000;
+            // 가장 가까운 노트 찾기
+            let hitNoteIndex = notes.findIndex(n => n.lane === lane && Math.abs(n.time - currentTime) < 0.2);
+            
+            if (hitNoteIndex !== -1) {
+                console.log("PERFECT!");
+                notes.splice(hitNoteIndex, 1); // 맞춘 노트 제거
+            }
+        }
+
+        update();
+    </script>
+</body>
+</html>
