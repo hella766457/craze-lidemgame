@@ -1,251 +1,263 @@
-// 화면 전환 함수
-function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(screenId).classList.add('active');
-}
-
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 const keys = ['d', 'f', 'j', 'k'];
 const laneWidth = 100;
 const judgeLineY = 500;
-const START_DELAY = 2.0;
+const START_DELAY = 2; // Readiness 딜레이 (2초)
+
+// 🎵 오디오 객체 생성
+let bgmAudio = new Audio();
 
 let selectedSongIndex = 0;
 let isGaming = false;
 let startTime = 0;
-let currentSpeed = 450;
+let animationFrameId = null;
 
+let currentNotes = [];
+let currentSpeed = 450;
 let score = 0;
 let combo = 0;
-let cntNice = 0;
+let maxCombo = 0;
+
+let cntPerfect = 0;
+let cntGreat = 0;
 let cntGood = 0;
 let cntMiss = 0;
 let lastJudgeText = "";
-let lastJudgeColor = "#fff";
-let judgeTimer = 0;
+let judgeColor = "#fff";
 
-let currentNotes = [];
+window.addEventListener("DOMContentLoaded", () => {
+    loadSongList();
+});
 
-// 곡 목록 랜더링
-function renderSongList() {
-    const container = document.getElementById("songListContainer");
-    if (!container) return;
-    
-    // SONG_DATABASE 로드 체크
-    if (typeof SONG_DATABASE === 'undefined') {
-        console.error("SONG_DATABASE가 정의되지 않았습니다. songs.js 로드 순서를 확인하세요.");
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+}
+
+function loadSongList() {
+    const songListContainer = document.getElementById("songList");
+    songListContainer.innerHTML = "";
+
+    if (typeof SONG_DATABASE === 'undefined' || SONG_DATABASE.length === 0) {
+        songListContainer.innerHTML = "<div style='color:#aaa; text-align:center;'>등록된 곡이 없습니다.</div>";
         return;
     }
 
-    container.innerHTML = "";
-
-    SONG_DATABASE.forEach((song, index) => {
+    SONG_DATABASE.forEach((song, idx) => {
         const card = document.createElement("div");
-        card.className = `song-card ${index === selectedSongIndex ? 'selected' : ''}`;
-        card.onclick = () => selectSong(index);
+        card.className = `song-card ${idx === selectedSongIndex ? 'selected' : ''}`;
+        card.onclick = () => selectSong(idx);
         card.innerHTML = `
             <div class="song-title">${song.title}</div>
-            <div class="song-info">BPM: ${song.bpm} | ${song.keys} Keys</div>
-            <span class="difficulty">${song.difficulty}</span>
+            <div class="song-info">BPM: ${song.bpm} | 난이도: ${song.difficulty || 'Normal'}</div>
         `;
-        container.appendChild(card);
+        songListContainer.appendChild(card);
     });
 }
 
 function selectSong(index) {
     selectedSongIndex = index;
-    renderSongList();
+    loadSongList();
 }
 
+// 로비로 돌아갈 때 음악 정지
+function showSelectScreen() {
+    isGaming = false;
+    
+    // 🎵 음악 정지 및 초기화
+    bgmAudio.pause();
+    bgmAudio.currentTime = 0;
+
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    showScreen('selectScreen');
+}
+
+// 🎵 게임 시작 및 음악 재생
 function playSelectedSong() {
     if (typeof SONG_DATABASE === 'undefined' || !SONG_DATABASE[selectedSongIndex]) return;
-    
+
     const song = SONG_DATABASE[selectedSongIndex];
 
     showScreen('gameScreen');
+
     currentNotes = JSON.parse(JSON.stringify(song.notes));
     currentSpeed = song.speed || 450;
-    
-    startTime = Date.now();
     score = 0;
     combo = 0;
-    cntNice = 0;
+    maxCombo = 0;
+    cntPerfect = 0;
+    cntGreat = 0;
     cntGood = 0;
     cntMiss = 0;
     lastJudgeText = "";
+
+    // 🎵 음악 파일 세팅
+    if (song.bgm) {
+        bgmAudio.src = song.bgm;
+        bgmAudio.currentTime = 0;
+    }
+
+    startTime = Date.now();
     isGaming = true;
-    
+
+    // 🎵 START_DELAY(2초) 준비 시간 후 음악 재생 시작
+    setTimeout(() => {
+        if (isGaming && song.bgm) {
+            bgmAudio.play().catch(e => console.log("자동 재생 정책 제한:", e));
+        }
+    }, START_DELAY * 1000);
+
     requestAnimationFrame(update);
 }
 
-function triggerJudge(text, color, addScore, judgeType) {
-    lastJudgeText = text;
-    lastJudgeColor = color;
-    judgeTimer = 30;
-
-    if (judgeType === "NICE") {
-        cntNice++;
-        combo++;
-        score += addScore;
-    } else if (judgeType === "GOOD") {
-        cntGood++;
-        combo++;
-        score += addScore;
-    } else if (judgeType === "MISS") {
-        cntMiss++;
-        combo = 0;
-    }
-}
-
+// 메인 루프
 function update() {
     if (!isGaming) return;
 
-    let currentTime = ((Date.now() - startTime) / 1000) - START_DELAY;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    let currentTime = (Date.now() - startTime) / 1000 - START_DELAY;
+
+    // 레인 구분선
     for (let i = 1; i < 4; i++) {
-        ctx.strokeStyle = "#333";
+        ctx.strokeStyle = "#222";
         ctx.beginPath();
         ctx.moveTo(i * laneWidth, 0);
         ctx.lineTo(i * laneWidth, canvas.height);
         ctx.stroke();
     }
 
-    ctx.strokeStyle = "#ff0055";
+    // 판정선
+    ctx.strokeStyle = "#00e5ff";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(0, judgeLineY);
     ctx.lineTo(canvas.width, judgeLineY);
     ctx.stroke();
 
-    if (currentTime < 0) {
-        ctx.fillStyle = "#ffcc00";
-        ctx.font = "italic bold 40px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("READY...", canvas.width / 2, 250);
-    } else {
-        for (let i = currentNotes.length - 1; i >= 0; i--) {
-            let note = currentNotes[i];
-            let timeDiff = note.time - currentTime;
-            let noteY = judgeLineY - (timeDiff * currentSpeed);
+    // 노트 이동 및 MISS 처리
+    for (let i = currentNotes.length - 1; i >= 0; i--) {
+        let note = currentNotes[i];
+        let timeDiff = note.time - currentTime;
+        let noteY = judgeLineY - (timeDiff * currentSpeed);
 
-            if (timeDiff < -0.16) {
-                triggerJudge("MISS", "#ff3333", 0, "MISS");
-                currentNotes.splice(i, 1);
-                continue;
-            }
+        if (noteY > -20 && noteY < canvas.height + 20) {
+            ctx.fillStyle = "#00e5ff";
+            ctx.fillRect(note.lane * laneWidth + 10, noteY - 10, laneWidth - 20, 20);
+        }
 
-            if (noteY > -20 && noteY < canvas.height + 20) {
-                if (note.type === "gold") {
-                    ctx.fillStyle = "#ffd700";
-                    ctx.shadowColor = "#ffaa00";
-                    ctx.shadowBlur = 12;
-                    ctx.fillRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
-                    ctx.strokeStyle = "#ffffff";
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
-                    ctx.shadowBlur = 0;
-                } else {
-                    ctx.fillStyle = "#00e5ff";
-                    ctx.fillRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
-                }
-            }
+        if (timeDiff < -0.15) {
+            processJudge("MISS");
+            currentNotes.splice(i, 1);
         }
     }
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 20px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(`SCORE: ${score}`, 15, 35);
+    drawUI();
 
-    if (judgeTimer > 0 && currentTime >= 0) {
-        judgeTimer--;
-        ctx.textAlign = "center";
-        ctx.fillStyle = lastJudgeColor;
-        ctx.font = "italic bold 36px sans-serif";
-        ctx.fillText(lastJudgeText, canvas.width / 2, 300);
-
-        if (combo > 1) {
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 22px sans-serif";
-            ctx.fillText(`${combo} COMBO`, canvas.width / 2, 335);
-        }
-    }
-
-    const lastNoteTime = SONG_DATABASE[selectedSongIndex].notes.slice(-1)[0]?.time || 10;
-    if (currentNotes.length === 0 && currentTime > lastNoteTime + 1.0) {
-        isGaming = false;
-        showResults();
+    // 모든 노트 처리 완료 시 결과 화면
+    if (currentNotes.length === 0 && currentTime > 2) {
+        setTimeout(showResults, 1000);
         return;
     }
 
-    requestAnimationFrame(update);
+    animationFrameId = requestAnimationFrame(update);
 }
 
-function showResults() {
-    const clearStatusElem = document.getElementById("clearStatus");
-
-    if (cntMiss === 0 && cntGood === 0) {
-        clearStatusElem.innerText = "ALL NICE!!";
-        clearStatusElem.style.color = "#00e5ff";
-    } else if (cntMiss === 0) {
-        clearStatusElem.innerText = "FULL COMBO!";
-        clearStatusElem.style.color = "#00ff66";
-    } else {
-        clearStatusElem.innerText = "STAGE CLEAR";
-        clearStatusElem.style.color = "#ffffff";
-    }
-
-    document.getElementById("finalScore").innerText = score;
-    document.getElementById("niceCount").innerText = cntNice;
-    document.getElementById("goodCount").innerText = cntGood;
-    document.getElementById("missCount").innerText = cntMiss;
-
-    showScreen("resultScreen");
-}
-
-window.addEventListener('keydown', (e) => {
+// 키 입력 처리
+window.addEventListener("keydown", (e) => {
     if (!isGaming) return;
-    
-    let currentTime = ((Date.now() - startTime) / 1000) - START_DELAY;
-    if (currentTime < 0) return;
 
     const keyIndex = keys.indexOf(e.key.toLowerCase());
-    if (keyIndex !== -1) {
-        checkHit(keyIndex, currentTime);
-    }
-});
+    if (keyIndex === -1) return;
 
-function checkHit(lane, currentTime) {
+    let currentTime = (Date.now() - startTime) / 1000 - START_DELAY;
+
     let targetIndex = -1;
-    let minDiff = 999;
+    let minTimeDiff = 999;
 
     for (let i = 0; i < currentNotes.length; i++) {
-        if (currentNotes[i].lane === lane) {
+        if (currentNotes[i].lane === keyIndex) {
             let diff = Math.abs(currentNotes[i].time - currentTime);
-            if (diff < minDiff) {
-                minDiff = diff;
+            if (diff < minTimeDiff) {
+                minTimeDiff = diff;
                 targetIndex = i;
             }
         }
     }
 
-    if (targetIndex !== -1 && minDiff <= 0.16) {
-        const hitNote = currentNotes[targetIndex];
-        const multiplier = (hitNote.type === "gold") ? 2 : 1;
+    if (targetIndex !== -1 && minTimeDiff < 0.18) {
+        if (minTimeDiff <= 0.04) processJudge("PERFECT");
+        else if (minTimeDiff <= 0.08) processJudge("GREAT");
+        else processJudge("GOOD");
 
-        if (minDiff <= 0.08) {
-            triggerJudge("NICE", "#00e5ff", 500 * multiplier, "NICE");
-        } else {
-            triggerJudge("GOOD", "#00ff66", 300 * multiplier, "GOOD");
-        }
         currentNotes.splice(targetIndex, 1);
     }
+});
+
+function processJudge(judge) {
+    lastJudgeText = judge;
+
+    if (judge === "PERFECT") {
+        score += 1000;
+        combo++;
+        cntPerfect++;
+        judgeColor = "#00e5ff";
+    } else if (judge === "GREAT") {
+        score += 700;
+        combo++;
+        cntGreat++;
+        judgeColor = "#00ff88";
+    } else if (judge === "GOOD") {
+        score += 400;
+        combo++;
+        cntGood++;
+        judgeColor = "#ffbb00";
+    } else if (judge === "MISS") {
+        combo = 0;
+        cntMiss++;
+        judgeColor = "#ff3355";
+    }
+
+    if (combo > maxCombo) maxCombo = combo;
 }
 
-window.onload = () => {
-    renderSongList();
-};
+function drawUI() {
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 20px sans-serif";
+    ctx.fillText(`SCORE: ${score}`, 15, 35);
+
+    if (combo > 0) {
+        ctx.fillStyle = "#00e5ff";
+        ctx.font = "bold 32px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`${combo} COMBO`, canvas.width / 2, 250);
+    }
+
+    if (lastJudgeText) {
+        ctx.fillStyle = judgeColor;
+        ctx.font = "bold 28px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(lastJudgeText, canvas.width / 2, 300);
+    }
+
+    ctx.textAlign = "left";
+}
+
+// 결과 화면 진입 및 음악 끄기
+function showResults() {
+    isGaming = false;
+    
+    // 🎵 음악 정지
+    bgmAudio.pause();
+
+    document.getElementById("resultScore").innerText = score.toLocaleString();
+    document.getElementById("resPerfect").innerText = cntPerfect;
+    document.getElementById("resGreat").innerText = cntGreat;
+    document.getElementById("resGood").innerText = cntGood;
+    document.getElementById("resMiss").innerText = cntMiss;
+    document.getElementById("resMaxCombo").innerText = maxCombo;
+
+    showScreen('resultScreen');
+}
