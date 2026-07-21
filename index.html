@@ -2,8 +2,13 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Web Rhythm Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web 크레이즈 리듬 게임</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             background-color: #121212;
             color: white;
@@ -15,6 +20,7 @@
             margin: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
+            overflow: hidden; /* 전체 페이지 스크롤 방지 */
         }
 
         .screen {
@@ -22,13 +28,14 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 400px;
-            height: 600px;
+            width: 100%;
+            max-width: 400px;
+            height: 100vh;
+            max-height: 650px;
             background-color: #1e1e1e;
             border: 2px solid #333;
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            box-sizing: border-box;
             padding: 20px;
             text-align: center;
         }
@@ -65,7 +72,6 @@
             border-radius: 10px;
             width: 100%;
             padding: 20px;
-            box-sizing: border-box;
             margin-bottom: 20px;
             text-align: left;
         }
@@ -82,10 +88,14 @@
             font-size: 12px;
         }
 
+        /* 스크롤 없이 한눈에 들어오도록 캔버스 최대 높이 지정 */
         canvas {
             border: 2px solid #444;
             background-color: #000;
             border-radius: 8px;
+            max-height: 85vh;
+            max-width: 100%;
+            object-fit: contain;
         }
     </style>
 </head>
@@ -108,7 +118,7 @@
         <button class="btn" style="background: #444;" onclick="showScreen('lobbyScreen')">뒤로 가기</button>
     </div>
 
-    <div id="gameScreen" class="screen" style="padding: 0; background: transparent; border: none;">
+    <div id="gameScreen" class="screen" style="padding: 0; background: transparent; border: none; height: auto;">
         <canvas id="gameCanvas" width="400" height="600"></canvas>
     </div>
 
@@ -127,6 +137,7 @@
         let isGaming = false;
         let startTime = 0;
         let speed = 450;
+        const START_DELAY = 2.0; // 게임 시작 전 2초 대기시간 설정
 
         // 점수 및 판정 관련 변수
         let score = 0;
@@ -164,19 +175,20 @@
         function triggerJudge(text, color, addScore, isHit) {
             lastJudgeText = text;
             lastJudgeColor = color;
-            judgeTimer = 30; // 판정 문구 유지 프레임 수
+            judgeTimer = 30;
             if (isHit) {
                 combo++;
                 score += addScore;
             } else {
-                combo = 0; // MISS시 콤보 리셋
+                combo = 0;
             }
         }
 
         function update() {
             if (!isGaming) return;
 
-            let currentTime = (Date.now() - startTime) / 1000;
+            // 대기시간(START_DELAY)을 뺀 실제 진행 시간
+            let currentTime = ((Date.now() - startTime) / 1000) - START_DELAY;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -197,22 +209,29 @@
             ctx.lineTo(canvas.width, judgeLineY);
             ctx.stroke();
 
-            // 노트 그리기 및 놓친 노트(MISS) 검사
-            for (let i = notes.length - 1; i >= 0; i--) {
-                let note = notes[i];
-                let timeDiff = note.time - currentTime;
-                let noteY = judgeLineY - (timeDiff * speed);
+            // 대기 시간 카운트다운 연출 (currentTime < 0 일 때)
+            if (currentTime < 0) {
+                ctx.fillStyle = "#ffcc00";
+                ctx.font = "italic bold 40px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("READY...", canvas.width / 2, 250);
+            } else {
+                // 게임 진행 시 노트 그리기 및 MISS 검사
+                for (let i = notes.length - 1; i >= 0; i--) {
+                    let note = notes[i];
+                    let timeDiff = note.time - currentTime;
+                    let noteY = judgeLineY - (timeDiff * speed);
 
-                // 판정선을 지나쳐버린 경우 -> MISS 처리
-                if (timeDiff < -0.16) {
-                    triggerJudge("MISS", "#ff3333", 0, false);
-                    notes.splice(i, 1);
-                    continue;
-                }
+                    if (timeDiff < -0.16) {
+                        triggerJudge("MISS", "#ff3333", 0, false);
+                        notes.splice(i, 1);
+                        continue;
+                    }
 
-                if (noteY > -20 && noteY < canvas.height + 20) {
-                    ctx.fillStyle = "#00e5ff";
-                    ctx.fillRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
+                    if (noteY > -20 && noteY < canvas.height + 20) {
+                        ctx.fillStyle = "#00e5ff";
+                        ctx.fillRect(note.lane * laneWidth + 8, noteY - 10, laneWidth - 16, 20);
+                    }
                 }
             }
 
@@ -223,16 +242,14 @@
             ctx.fillText(`SCORE: ${score}`, 15, 35);
 
             // 판정 및 콤보 연출
-            if (judgeTimer > 0) {
+            if (judgeTimer > 0 && currentTime >= 0) {
                 judgeTimer--;
                 ctx.textAlign = "center";
                 
-                // 판정 텍스트 (NICE / GOOD / MISS)
                 ctx.fillStyle = lastJudgeColor;
                 ctx.font = "italic bold 36px sans-serif";
                 ctx.fillText(lastJudgeText, canvas.width / 2, 300);
 
-                // 콤보 표시
                 if (combo > 1) {
                     ctx.fillStyle = "#ffffff";
                     ctx.font = "bold 22px sans-serif";
@@ -251,19 +268,20 @@
             requestAnimationFrame(update);
         }
 
-        // 키보드 입력 처리 및 판정 로직
+        // 키보드 입력 및 판정
         window.addEventListener('keydown', (e) => {
             if (!isGaming) return;
+            
+            let currentTime = ((Date.now() - startTime) / 1000) - START_DELAY;
+            if (currentTime < 0) return; // READY 상태일 때는 입력 무시
+
             const keyIndex = keys.indexOf(e.key.toLowerCase());
             if (keyIndex !== -1) {
-                checkHit(keyIndex);
+                checkHit(keyIndex, currentTime);
             }
         });
 
-        function checkHit(lane) {
-            let currentTime = (Date.now() - startTime) / 1000;
-            
-            // 해당 레인에서 가장 가까운 노트 찾기
+        function checkHit(lane, currentTime) {
             let targetIndex = -1;
             let minDiff = 999;
 
@@ -277,13 +295,10 @@
                 }
             }
 
-            // 판정 세부 계산
             if (targetIndex !== -1 && minDiff <= 0.16) {
                 if (minDiff <= 0.08) {
-                    // NICE (최상)
                     triggerJudge("NICE", "#00e5ff", 500, true);
                 } else {
-                    // GOOD (보통)
                     triggerJudge("GOOD", "#00ff66", 300, true);
                 }
                 notes.splice(targetIndex, 1);
