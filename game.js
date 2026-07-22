@@ -169,9 +169,14 @@ function update() {
         let note = currentNotes[i];
         let timeDiff = note.time - currentTime;
         let noteY = judgeLineY - (timeDiff * currentSpeed);
+        let type = note.type;
 
         if (noteY > -20 && noteY < canvas.height + 20) {
-            ctx.fillStyle = "#00e5ff";
+            if (type == undefined) {
+                ctx.fillStyle = "#00e5ff";
+            } else if (type == "gold") {
+                ctx.fillStyle = "#FFD700";
+            }
             ctx.fillRect(note.lane * laneWidth + 10, noteY - 10, laneWidth - 20, 20);
         }
 
